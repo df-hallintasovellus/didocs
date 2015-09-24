@@ -142,7 +142,7 @@ Doc.prototype.commands.type = function(line) {
         type = type[1].trim();
     }
     this.type = type;
-    this.commands.brief(line);
+    this.commands.brief.bind(this)(line);
 }
 
 /**
@@ -192,7 +192,7 @@ var renderFile = function(options) {
 }
 
 /**
- * Command line options (default values).
+ * @type {Object} Command line options (default values).
  */
 var OPTIONS = {
     src: "./*.js",
