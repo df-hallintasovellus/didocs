@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Language-agnostic Javadoc-style doc",
   "main": "didocs.js",
+  "bin": "didocs.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/joanrieu/didocs.git"
