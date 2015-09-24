@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/joanrieu/didocs",
   "dependencies": {
+    "debug": "^2.2.0",
     "gulp": "^3.9.0",
     "jade": "^1.11.0",
     "markdown-it": "^4.4.0",

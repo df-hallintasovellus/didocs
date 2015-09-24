@@ -10,6 +10,11 @@ var through2 = require("through2");
 var jade = require("jade");
 var md = require("markdown-it")();
 
+var debug = require("debug");
+var packageName = require("./package.json").name;
+var red = "\x1b[31m";
+var yellow = "\x1b[33m";
+
 /**
  * Checks if a token is an identifier.
  * @param {string} identifier - Identifier to validate.
@@ -35,10 +40,12 @@ function getFirstIdentifier(code) {
  * A block of documentation.
  * @param {string} commentBlock - Block of source documentation.
  * @param {string} codeBlock - Block of source code.
+ * @param {string} log - Logger used for this file.
  */
-function Doc(commentBlock, codeBlock) {
+function Doc(commentBlock, codeBlock, log) {
     this.name = getFirstIdentifier(codeBlock);
     this.indentation = commentBlock.match(/^\s*(\*\s*)/)[0].length;
+    log("parsing", this.name);
     commentBlock
         .split("\n")
         .map(function(line) {
@@ -60,10 +67,10 @@ function Doc(commentBlock, codeBlock) {
                 if (command in this.commands)
                     this.commands[command].call(this, comment.slice(1 + command.length).trim());
                 else
-                    console.warn("Unknown annotation '" + command + "' in '" + comment + "'");
-            } catch (e) {
-                e.message += " in '" + comment + "'";
-                console.error(e);
+                    log(yellow + "unknown annotation", comment);
+            } catch (err) {
+                err.message += " in '" + comment + "'";
+                log(red + "error", err);
             }
         }, this);
 }
@@ -138,19 +145,21 @@ Doc.prototype.commands.type = function(line) {
 /**
  * Runs the parser on some source code.
  * @param {string} sourceCode - Source code to parse.
+ * @param {string} log - Logger used for this file.
  * @returns {Doc[]} Parsed documentation.
  */
-function parseSourceCode(sourceCode) {
-    return (" " + sourceCode)
+function parseSourceCode(sourceCode, log) {
+    var commentBlocks = (" " + sourceCode)
         .split("/**\n")
         .filter(function(el, i) {
             return i > 0;
-        })
-        .map(function(el, i) {
-            var blocks = el.split("*/").slice(0, 2);
-            if (blocks !== null)
-                return new Doc(blocks[0], blocks[1]);
         });
+    log("detecting", commentBlocks.length);
+    return commentBlocks.map(function(el, i) {
+        var blocks = el.split("*/").slice(0, 2);
+        if (blocks !== null)
+            return new Doc(blocks[0], blocks[1], log);
+    });
 }
 
 /**
@@ -158,17 +167,22 @@ function parseSourceCode(sourceCode) {
  */
 var renderFile = function(options) {
     return through2.obj(function(file, encoding, callback) {
+        var log = debug(packageName + ":renderFile");
         try {
-            var docs = parseSourceCode(file.contents.toString());
+            log("starting", file.path);
+            var docs = parseSourceCode(file.contents.toString(), log);
+            log("rendering");
             var html = options.template({
                 docs: docs,
                 file: file,
                 md: md
             });
+            log("done");
             file.contents = new Buffer(html);
             file.path += options.templateExt;
             callback(null, file);
         } catch (err) {
+            log("error", err);
             callback(err);
         }
     });
@@ -192,8 +206,10 @@ var OPTIONS = {
 function parseCommandLine() {
     var args = process.argv.slice(2);
     var options = util._extend({}, OPTIONS);
+    var log = debug(packageName + ":parseCommandLine");
     while (args.length > 0) {
         var arg = args.shift();
+        log("argument", arg);
         switch (arg) {
             case "--src":
                 options.src = args.shift();
@@ -209,6 +225,7 @@ function parseCommandLine() {
                 throw new Error("Unknown argument: " + arg);
         }
     }
+    debug("options", options);
     return options;
 }
 
