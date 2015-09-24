@@ -54,9 +54,12 @@ function Doc(commentBlock, codeBlock, log) {
         .filter(function(comment) {
             return comment.trim().length > 0;
         })
-        .reduce(function(comments, comment) {
+        .reduce(function(comments, comment, index) {
             if (comment.charAt(0) === "@")
-                comments.push(comment);
+                if (index > 0)
+                    comments.push(comment);
+                else
+                    comments[0] = comment;
             else
                 comments.push(comments.pop() + " " + comment);
             return comments;
