@@ -1,0 +1,79 @@
+- var filename = file.path.split("/").pop();
+
+doctype html
+html
+    head(lang="en")
+        meta(charset="utf-8")
+        meta(name="viewport", content="width=device-width, initial-scale=1")
+        link(rel="stylesheet", href="//cdnjs.cloudflare.com/ajax/libs/pure/0.6.0/pure-min.css")
+        style.
+            body {
+                color: #777;
+                font-family: sans-serif;
+                }
+            .page {
+                margin: auto;
+                max-width: 768px;
+                }
+            h1 {
+                text-align: center;
+                }
+            h1, h2 {
+                font-weight: normal;
+                }
+            h2 {
+                background-color: #EEE;
+                border: 1pt solid #CCC;
+                font-family: monospace;
+                margin-top: 2em;
+                padding: .5em;
+                }
+            .type {
+                font-style: italic;
+                padding-right: .5em;
+                }
+            .name :not(:last-child) {
+                opacity: .5;
+                }
+            .name :last-child {
+                color: #369;
+                }
+            .cruft {
+                opacity: .5;
+                padding: .2em;
+                }
+            .args .type, .args .name {
+                font-family: monospace;
+                }
+        title= filename
+    body
+        .page
+            h1= filename
+            //div= new Date()
+            each doc in docs
+                div.doc
+                    h2
+                        - var type = doc.type || (doc.return && doc.return.type);
+                        if type
+                            span.type= type
+                        span.name
+                            each part, i in doc.name.split(".")
+                                if i
+                                    span.cruft .
+                                span= part
+                        if doc.args
+                            span.cruft (
+                            each param, i in doc.args
+                                if i
+                                    span.cruft ,
+                                span= param.name
+                            span.cruft )
+                    != md.render(doc.brief)
+                    if doc.args
+                        table.args.pure-table.pure-table-striped
+                            each param in doc.args
+                                tr
+                                    td.type= param.type
+                                    td.name= param.name
+                                    td!= md.renderInline(param.brief)
+                    //code= JSON.stringify(doc)

@@ -1,5 +1,12 @@
 var fs = require("fs");
 var path = require("path");
+var util = require("util");
+
+var gulp = require("gulp");
+var through2 = require("through2");
+
+var jade = require("jade");
+var md = require("markdown-it")();
 
 /**
  * Checks if a token is an identifier.
@@ -17,7 +24,7 @@ function isIdentifier(token) {
  * @returns {string} Next identifier found in the code.
  */
 function getFirstIdentifier(code) {
-    return code.match(/\w+/g).reduce(function(found, token) {
+    return code.match(/(\w|\.)+/g).reduce(function(found, token) {
         return found ? found : isIdentifier(token) ? token : undefined
     }, undefined);
 }
@@ -28,7 +35,7 @@ function getFirstIdentifier(code) {
  * @param {string} codeBlock - Block of source code.
  */
 function Doc(commentBlock, codeBlock) {
-    this.identifier = getFirstIdentifier(codeBlock);
+    this.name = getFirstIdentifier(codeBlock);
     this.indentation = commentBlock.match(/^\s*(\*\s*)/)[0].length;
     commentBlock
         .split("\n")
@@ -47,35 +54,48 @@ function Doc(commentBlock, codeBlock) {
         }, [ "@brief" ])
         .forEach(function(comment) {
             var command = comment.match(/\w+/)[0];
-            this[command](comment.slice(1 + command.length).trim());
+            try {
+                if (command in this.commands)
+                    this.commands[command].call(this, comment.slice(1 + command.length).trim());
+                else
+                    console.warn("Unknown annotation '" + command + "' in '" + comment + "'");
+            } catch (e) {
+                e.message += " in '" + comment + "'";
+                console.error(e);
+            }
         }, this);
 }
 
 /**
+ * @type {Object.<string,function>} Map containing known documentation commands.
+ */
+Doc.prototype.commands = {};
+
+/**
  * Adds a brief description of the function.
  */
-Doc.prototype.brief = function(brief) {
-    this.brief = brief;
+Doc.prototype.commands.brief = function(brief) {
+    this.brief = brief.trim();
 }
 
 /**
  * Adds a method parameter description.
  */
-Doc.prototype.param = function(line) {
-    if (!this.params)
-        this.params = [];
+Doc.prototype.commands.param = function(line) {
+    if (!this.args)
+        this.args = [];
     var type = line.match(/^\{(.+)\}\s*/);
     if (type !== null) {
         line = line.slice(type[0].length);
         type = type[1].trim();
-        var name = line.match(/^(\w+)\s*(-\s*)?/);
-        if (name !== null) {
-            line = line.slice(name[0].length);
-            var name = name[1];
-        }
+    }
+    var name = line.match(/^(\w+)\s*(-\s*)?/);
+    if (name !== null) {
+        line = line.slice(name[0].length);
+        var name = name[1];
     }
     var brief = line.trim();
-    this.params.push({
+    this.args.push({
         brief: brief,
         name: name,
         type: type
@@ -85,60 +105,123 @@ Doc.prototype.param = function(line) {
 /**
  * Adds a return type description.
  */
-Doc.prototype.returns = function(line) {
+Doc.prototype.commands.returns = function(line) {
     var type = line.match(/^\{(.+)\}/);
     if (type !== null) {
         line = line.slice(type[0].length);
         type = type[1].trim();
     }
     var brief = line.trim();
-    this.returns = {
+    this["return"] = {
         brief: brief,
         type: type
     };
 }
 
+Doc.prototype.commands["return"] = Doc.prototype.commands.returns;
+
 /**
- * Runs the parser on a file.
- * @param {string} file - Path to the file.
+ * Adds the type of a variable.
  */
-function parseFile(filename, callback) {
-    fs.readFile(filename, "utf8", function(err, data) {
-        if (err) return callback(err);
-        callback(null, (" " + data)
-            .split("/**\n")
-            .filter(function(el, i) {
-                return i % 2;
-            })
-            .map(function(el, i) {
-                var blocks = el.split("*/").slice(0, 2);
-                if (blocks !== null)
-                    return new Doc(blocks[0], blocks[1]);
-            })
-        );
+Doc.prototype.commands.type = function(line) {
+    var type = line.match(/^\{(.+)\}/);
+    if (type !== null) {
+        line = line.slice(type[0].length);
+        type = type[1].trim();
+    }
+    this.type = type;
+    this.commands.brief(line);
+}
+
+/**
+ * Runs the parser on some source code.
+ * @param {string} sourceCode - Source code to parse.
+ * @returns {Doc[]} Parsed documentation.
+ */
+function parseSourceCode(sourceCode) {
+    return (" " + sourceCode)
+        .split("/**\n")
+        .filter(function(el, i) {
+            return i > 0;
+        })
+        .map(function(el, i) {
+            var blocks = el.split("*/").slice(0, 2);
+            if (blocks !== null)
+                return new Doc(blocks[0], blocks[1]);
+        });
+}
+
+/**
+ * @type {Transform} Converts source file to HTML docs.
+ */
+var renderFile = function(options) {
+    return through2.obj(function(file, encoding, callback) {
+        try {
+            var docs = parseSourceCode(file.contents.toString());
+            var html = options.template({
+                docs: docs,
+                file: file,
+                md: md
+            });
+            file.contents = new Buffer(html);
+            file.path += options.templateExt;
+            callback(null, file);
+        } catch (err) {
+            callback(err);
+        }
     });
 }
 
 /**
- * Converts a source code file to an HTML doc page.
- * @param {string} filename - Path to the file to convert.
- * @param {string} docPath - Path to the target directory.
+ * Command line options (default values).
  */
-function processFile(filename, docPath) {
-    parseFile(filename, function(err, doc) {
-        if (err) throw err;
-        fs.writeFile(
-            path.join(docPath, filename + ".html"),
-            JSON.stringify(doc),
-            "utf8",
-            function(err) {
-                if (err) throw err;
-            }
-        );
-    });
+var OPTIONS = {
+    src: "./*.js",
+    dest: "./doc/",
+    template: jade.compileFile(path.join(__dirname, "template.jade")),
+    templateExt: ".html"
+};
+
+/**
+ * Parses the command line to detect the options.
+ * @returns {Object} Option map.
+ * @see OPTIONS
+ */
+function parseCommandLine() {
+    var args = process.argv.slice(2);
+    var options = util._extend({}, OPTIONS);
+    while (args.length > 0) {
+        var arg = args.shift();
+        switch (arg) {
+            case "--src":
+                options.src = args.shift();
+                if (options.dest === undefined)
+                    throw new Error("Missing argument for " + arg);
+                break;
+            case "--dest":
+                options.dest = args.shift();
+                if (options.dest === undefined)
+                    throw new Error("Missing argument in " + arg);
+                break;
+            default:
+                throw new Error("Unknown argument: " + arg);
+        }
+    }
+    return options;
 }
 
-fs.mkdir("doc", function(err) {
-    if (err && err.code !== "EEXIST") throw err;
-    processFile("didocs.js", "doc");
-});
+/**
+ * Runs the parser and formatter.
+ */
+function run(options) {
+    return gulp.src(options.src, { base: "./" })
+        .pipe(renderFile(options))
+        .pipe(gulp.dest(options.dest));
+}
+
+if (require.main === module)
+    run(parseCommandLine());
+
+module.exports = {
+    run: run
+};

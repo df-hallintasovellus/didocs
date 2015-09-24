@@ -1,0 +1,26 @@
+{
+  "name": "didocs",
+  "version": "1.0.0",
+  "description": "Language-agnostic Javadoc-style doc",
+  "main": "didocs.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joanrieu/didocs.git"
+  },
+  "keywords": [
+    "doc",
+    "documentation"
+  ],
+  "author": "Joan Rieu <joan.rieu@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/joanrieu/didocs/issues"
+  },
+  "homepage": "https://github.com/joanrieu/didocs",
+  "dependencies": {
+    "gulp": "^3.9.0",
+    "jade": "^1.11.0",
+    "markdown-it": "^4.4.0",
+    "through2": "^2.0.0"
+  }
+}
