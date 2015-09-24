@@ -68,12 +68,16 @@ html
                                     span.cruft ,
                                 span= param.name
                             span.cruft )
-                    != md.render(doc.brief)
+                    if (doc.brief)
+                        != md.render(doc.brief)
                     if doc.args
                         table.args.pure-table.pure-table-striped
                             each param in doc.args
                                 tr
                                     td.type= param.type
                                     td.name= param.name
-                                    td!= md.renderInline(param.brief)
+                                    if (param.brief)
+                                        td!= md.renderInline(param.brief)
+                                    else
+                                        td
                     //code= JSON.stringify(doc)
