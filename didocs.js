@@ -59,21 +59,18 @@ function Doc(commentBlock, codeBlock, log) {
         .filter(function(comment) {
             return comment.trim().length > 0;
         })
-        .reduce(function(comments, comment, index) {
-            if (comment.charAt(0) === "@")
-                if (index > 0)
-                    comments.push(comment);
-                else
-                    comments[0] = comment;
-            else
-                comments.push(comments.pop() + " " + comment);
-            return comments;
-        }, [ "@brief" ])
         .forEach(function(comment) {
-            var command = comment.match(/\w+/)[0];
+            if (comment.charAt(0) !== "@") {
+                var command = 'description'
+                var arg = comment
+            } else {
+                var command = comment.match(/\w+/)[0];
+                var arg = comment.slice(1 + command.length).trim()
+            }
+
             try {
                 if (command in this.commands)
-                    this.commands[command].call(this, comment.slice(1 + command.length).trim());
+                    this.commands[command].call(this, arg);
                 else
                     log(yellow + "unknown annotation", comment);
             } catch (err) {
@@ -87,6 +84,13 @@ function Doc(commentBlock, codeBlock, log) {
  * @type {Object.<string,function>} Map containing known documentation commands.
  */
 Doc.prototype.commands = {};
+
+/**
+ * Adds a line of description.
+ */
+Doc.prototype.commands.description = function(description) {
+    this.description = (this.description || "") + description.trim() + '\n';
+}
 
 /**
  * Adds a brief description of the function.
