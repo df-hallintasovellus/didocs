@@ -17,6 +17,7 @@
   "bugs": {
     "url": "https://github.com/joanrieu/didocs/issues"
   },
+  "types": "didocs.d.ts",
   "homepage": "https://github.com/joanrieu/didocs",
   "dependencies": {
     "debug": "^2.2.0",
