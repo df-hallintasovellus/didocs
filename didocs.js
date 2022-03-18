@@ -100,6 +100,13 @@ Doc.prototype.commands.brief = function(brief) {
 }
 
 /**
+ * 
+ */
+Doc.prototype.commands.feature = function(feature) {
+    this.feature = (this.feature || []).concat(feature.trim());
+}
+
+/**
  * Adds a method parameter description.
  */
 Doc.prototype.commands.param = function(line) {
