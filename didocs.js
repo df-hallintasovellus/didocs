@@ -232,7 +232,7 @@ function parseCommandLine() {
         switch (arg) {
             case "--src":
                 options.src = args.shift();
-                if (options.dest === undefined)
+                if (options.src === undefined)
                     throw new Error("Missing argument for " + arg);
                 break;
             case "--dest":
