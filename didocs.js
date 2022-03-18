@@ -182,7 +182,7 @@ var renderFile = function(options) {
             });
             log("done");
             file.contents = new Buffer.from(html);
-            file.path += options.templateExt;
+            file.path += options.outputExt;
             callback(null, file);
         } catch (err) {
             log("error", err);
@@ -227,6 +227,11 @@ function parseCommandLine() {
             case "--template":
                 options.template = args.shift();
                 if (options.template === undefined)
+                    throw new Error("Missing argument in " + arg);
+                break;
+            case "--outputExt":
+                options.outputExt = args.shift();
+                if (options.outputExt === undefined)
                     throw new Error("Missing argument in " + arg);
                 break;
             default:
