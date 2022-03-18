@@ -21,8 +21,13 @@ var yellow = "\x1b[33m";
  * @returns {boolean} Whether the token is a valid identifier.
  */
 function isIdentifier(token) {
-    return typeof token === "string" &&
-        [ "function", "var" ].indexOf(token) === -1;
+    if (!(typeof token === "string"))
+        return false;
+
+    const isReservedWord = [ "function", "var", "const", "export", "import", "fun" ].indexOf(token) !== -1;
+    const isAnnotation = ['@'].indexOf(token.charAt(0)) !== -1;
+
+    return !isReservedWord && !isAnnotation;
 }
 
 /**
@@ -31,7 +36,7 @@ function isIdentifier(token) {
  * @returns {string} Next identifier found in the code.
  */
 function getFirstIdentifier(code) {
-    return code.match(/(\w|\.)+/g).reduce(function(found, token) {
+    return code.match(/([\w\.@]+)/g).reduce(function(found, token) {
         return found ? found : isIdentifier(token) ? token : undefined
     }, undefined);
 }
