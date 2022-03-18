@@ -181,7 +181,7 @@ var renderFile = function(options) {
                 md: md
             });
             log("done");
-            file.contents = new Buffer(html);
+            file.contents = new Buffer.from(html);
             file.path += options.templateExt;
             callback(null, file);
         } catch (err) {
