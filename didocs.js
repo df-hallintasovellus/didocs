@@ -197,8 +197,8 @@ var renderFile = function(options) {
 var OPTIONS = {
     src: "./*.js",
     dest: "./doc/",
-    template: pug.compileFile(path.join(__dirname, "template.jade")),
-    templateExt: ".html"
+    template: path.join(__dirname, "json.pug"),
+    outputExt: ".html"
 };
 
 /**
@@ -224,10 +224,16 @@ function parseCommandLine() {
                 if (options.dest === undefined)
                     throw new Error("Missing argument in " + arg);
                 break;
+            case "--template":
+                options.template = args.shift();
+                if (options.template === undefined)
+                    throw new Error("Missing argument in " + arg);
+                break;
             default:
                 throw new Error("Unknown argument: " + arg);
         }
     }
+
     debug("options", options);
     return options;
 }
@@ -236,6 +242,10 @@ function parseCommandLine() {
  * Runs the parser and formatter.
  */
 function run(options) {
+    if (typeof options.template === 'string') {
+        options.template = pug.compileFile(options.template);
+    }
+
     return gulp.src(options.src, { base: "./" })
         .pipe(renderFile(options))
         .pipe(gulp.dest(options.dest));
