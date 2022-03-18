@@ -7,7 +7,7 @@ var util = require("util");
 var gulp = require("gulp");
 var through2 = require("through2");
 
-var jade = require("jade");
+var pug = require("pug");
 var md = require("markdown-it")();
 
 var debug = require("debug");
@@ -197,7 +197,7 @@ var renderFile = function(options) {
 var OPTIONS = {
     src: "./*.js",
     dest: "./doc/",
-    template: jade.compileFile(path.join(__dirname, "template.jade")),
+    template: pug.compileFile(path.join(__dirname, "template.jade")),
     templateExt: ".html"
 };
 
